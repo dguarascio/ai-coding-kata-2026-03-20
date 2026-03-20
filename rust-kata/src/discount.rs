@@ -19,6 +19,7 @@ pub(crate) fn calculate_discount_percent(
             }
         }
         CustomerType::Employee => discount_percent += 30,
+        CustomerType::Partner => discount_percent += 12,
         CustomerType::Regular | CustomerType::New | CustomerType::Unknown => {}
     }
 
@@ -35,12 +36,20 @@ pub(crate) fn calculate_discount_percent(
         if subtotal >= 20_000 {
             discount_percent += 7;
         }
+    } else if coupon == "PARTNER5" {
+        if customer_type == CustomerType::Partner && subtotal >= 12_000 {
+            discount_percent += 5;
+        }
     }
 
     // ── Black Friday bonus ────────────────────────────────────────────────────
-    // Employees are excluded from the Black Friday discount bonus.
-    if black_friday && customer_type != CustomerType::Employee {
-        discount_percent += 5;
+    // Employee: exempt (0 %). Partner: reduced rate (3 %). Everyone else: 5 %.
+    if black_friday {
+        discount_percent += match customer_type {
+            CustomerType::Employee => 0,
+            CustomerType::Partner => 3,
+            _ => 5,
+        };
     }
 
     // ── Global cap ───────────────────────────────────────────────────────────
@@ -87,6 +96,14 @@ mod tests {
         assert_eq!(
             calculate_discount_percent(CustomerType::Employee, 10_000, "", false),
             30
+        );
+    }
+
+    #[test]
+    fn partner_gets_12_percent() {
+        assert_eq!(
+            calculate_discount_percent(CustomerType::Partner, 10_000, "", false),
+            12
         );
     }
 
@@ -174,18 +191,57 @@ mod tests {
         );
     }
 
+    #[test]
+    fn partner5_applies_to_partner_at_threshold() {
+        // 12 (partner) + 5 (PARTNER5) = 17
+        assert_eq!(
+            calculate_discount_percent(CustomerType::Partner, 12_000, "PARTNER5", false),
+            17
+        );
+    }
+
+    #[test]
+    fn partner5_does_not_apply_below_threshold() {
+        // subtotal 11_999 < 12_000: PARTNER5 condition fails, only base 12 %
+        assert_eq!(
+            calculate_discount_percent(CustomerType::Partner, 11_999, "PARTNER5", false),
+            12
+        );
+    }
+
+    #[test]
+    fn partner5_has_no_effect_for_non_partner() {
+        assert_eq!(
+            calculate_discount_percent(CustomerType::Regular, 12_000, "PARTNER5", false),
+            0
+        );
+        assert_eq!(
+            calculate_discount_percent(CustomerType::Vip, 12_000, "PARTNER5", false),
+            15 // only VIP base discount, PARTNER5 condition fails
+        );
+    }
+
     // ── Black Friday ──────────────────────────────────────────────────────────
 
     #[test]
-    fn black_friday_adds_5_for_non_employee() {
+    fn black_friday_adds_5_for_standard_customers() {
         assert_eq!(
             calculate_discount_percent(CustomerType::Regular, 10_000, "", true),
             5
         );
         assert_eq!(
             calculate_discount_percent(CustomerType::Vip, 10_000, "", true),
-            20
-        ); // 15 + 5
+            20 // 15 + 5
+        );
+    }
+
+    #[test]
+    fn black_friday_adds_3_for_partner() {
+        // Partner gets a reduced BF bonus of 3 %, not the standard 5 %
+        assert_eq!(
+            calculate_discount_percent(CustomerType::Partner, 10_000, "", true),
+            15 // 12 + 3
+        );
     }
 
     #[test]

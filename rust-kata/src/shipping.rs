@@ -20,9 +20,9 @@ pub(crate) fn calculate_shipping_cents(
         shipping_cents += 300;
     }
 
-    // ── 3–5. Free shipping overrides (set to 0) ───────────────────────────────
+    // ── 3–6. Free shipping overrides (set to 0) ───────────────────────────────
     // NOTE: these override the base + BF surcharge, but the employee surcharge
-    // in step 6 runs *after* them. An employee outside IT therefore still pays
+    // in step 7 runs *after* them. An employee outside IT therefore still pays
     // +500 even when a free-shipping condition is met.
     if coupon == "FREESHIP" && discounted_subtotal >= 8_000 {
         shipping_cents = 0;
@@ -36,7 +36,11 @@ pub(crate) fn calculate_shipping_cents(
         shipping_cents = 0;
     }
 
-    // ── 6. Employee surcharge (non-IT only) — applied last ────────────────────
+    if customer_type == CustomerType::Partner && discounted_subtotal >= 15_000 {
+        shipping_cents = 0;
+    }
+
+    // ── 7. Employee surcharge (non-IT only) — applied last ────────────────────
     if customer_type == CustomerType::Employee && country != "IT" {
         shipping_cents += 500;
     }
@@ -170,6 +174,24 @@ mod tests {
         );
     }
 
+    // ── Partner free shipping ─────────────────────────────────────────────────
+
+    #[test]
+    fn partner_free_shipping_at_threshold() {
+        assert_eq!(
+            calculate_shipping_cents(CustomerType::Partner, "US", "", 15_000, false),
+            0
+        );
+    }
+
+    #[test]
+    fn partner_free_shipping_not_triggered_below_threshold() {
+        assert_eq!(
+            calculate_shipping_cents(CustomerType::Partner, "US", "", 14_999, false),
+            1_500
+        );
+    }
+
     // ── Employee surcharge ────────────────────────────────────────────────────
 
     #[test]
@@ -203,8 +225,6 @@ mod tests {
 
     #[test]
     fn employee_surcharge_is_added_after_vip_free_shipping_override() {
-        // Hypothetical edge case: if a future type were both employee and VIP-equivalent,
-        // the surcharge would still apply last. Verified here with Employee + VIP threshold.
         // Employee does not qualify for VIP free-ship, so base 900 + 500 = 1_400.
         assert_eq!(
             calculate_shipping_cents(CustomerType::Employee, "DE", "", 20_000, false),

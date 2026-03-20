@@ -3,6 +3,7 @@ pub(crate) enum CustomerType {
     Vip,
     Premium,
     Employee,
+    Partner,
     Regular,
     New,
     Unknown,
@@ -14,6 +15,7 @@ impl CustomerType {
             "vip" => Self::Vip,
             "premium" => Self::Premium,
             "employee" => Self::Employee,
+            "partner" => Self::Partner,
             "regular" => Self::Regular,
             "new" => Self::New,
             _ => Self::Unknown,
@@ -30,6 +32,7 @@ mod tests {
         assert_eq!(CustomerType::from_str("vip"), CustomerType::Vip);
         assert_eq!(CustomerType::from_str("premium"), CustomerType::Premium);
         assert_eq!(CustomerType::from_str("employee"), CustomerType::Employee);
+        assert_eq!(CustomerType::from_str("partner"), CustomerType::Partner);
         assert_eq!(CustomerType::from_str("regular"), CustomerType::Regular);
         assert_eq!(CustomerType::from_str("new"), CustomerType::New);
     }
@@ -45,15 +48,17 @@ mod tests {
     fn leading_and_trailing_whitespace_is_trimmed() {
         assert_eq!(CustomerType::from_str(" vip "), CustomerType::Vip);
         assert_eq!(CustomerType::from_str("  premium  "), CustomerType::Premium);
+        assert_eq!(CustomerType::from_str(" partner "), CustomerType::Partner);
         assert_eq!(CustomerType::from_str("\tnew\t"), CustomerType::New);
     }
 
     #[test]
     fn case_is_not_normalised_uppercase_maps_to_unknown() {
         // safe() only trims whitespace; it does not lowercase the input,
-        // so "VIP" and "Premium" must not accidentally match.
+        // so "VIP", "Premium", "PARTNER" etc. must not accidentally match.
         assert_eq!(CustomerType::from_str("VIP"), CustomerType::Unknown);
         assert_eq!(CustomerType::from_str("Premium"), CustomerType::Unknown);
         assert_eq!(CustomerType::from_str("EMPLOYEE"), CustomerType::Unknown);
+        assert_eq!(CustomerType::from_str("PARTNER"), CustomerType::Unknown);
     }
 }

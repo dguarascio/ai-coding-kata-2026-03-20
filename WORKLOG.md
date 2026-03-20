@@ -144,13 +144,64 @@ without any additional changes — extracting the last function completes the co
 
 ---
 
-## Final Test Inventory
+## 2026-03-20 — Phase 7: New Customer Type `partner`
+
+**Status:** ✅ Complete
+
+Added the `partner` customer type following strict TDD: all 8 integration tests (Group P)
+were written and confirmed red before any implementation file was touched.
+
+**Partner rules implemented:**
+- Base discount: 12 %
+- Coupon `PARTNER5`: +5 % when customer is `partner` **and** subtotal ≥ 12 000 ¢; sits in
+  the existing mutually-exclusive coupon chain
+- Black Friday bonus: +3 % (binary `!= employee` guard replaced with a three-way match:
+  `Employee → 0`, `Partner → 3`, `_ → 5`)
+- Free shipping when discounted subtotal ≥ 15 000 ¢, inserted as step 6 between the Premium
+  override and the employee surcharge — preserving the employee-surcharge-runs-last quirk
+
+**Changes confined to three files as planned:**
+
+`src/customer_type.rs`
+- Added `Partner` variant to the enum
+- Added `"partner"` arm to `from_str`
+- Extended unit tests: `parses_all_known_variants`, `leading_and_trailing_whitespace_is_trimmed`,
+  `case_is_not_normalised_uppercase_maps_to_unknown`
+
+`src/discount.rs`
+- Added `CustomerType::Partner => discount_percent += 12` arm to the customer-type match
+- Added `"PARTNER5"` branch to the coupon chain (after `"BULK"`)
+- Replaced binary BF guard with three-way `match` on `customer_type`
+- New unit tests: `partner_gets_12_percent`, `partner5_applies_to_partner_at_threshold`,
+  `partner5_does_not_apply_below_threshold`, `partner5_has_no_effect_for_non_partner`,
+  `black_friday_adds_3_for_partner`; renamed `black_friday_adds_5_for_non_employee`
+  → `black_friday_adds_5_for_standard_customers`
+
+`src/shipping.rs`
+- Inserted Partner free-ship check (`discounted_subtotal >= 15_000 → 0`) as step 6,
+  between the Premium override (step 5) and the employee surcharge (step 7)
+- Updated step comment from `3–5` to `3–6`
+- New unit tests: `partner_free_shipping_at_threshold`,
+  `partner_free_shipping_not_triggered_below_threshold`
+
+**`src/lib.rs` and `src/tax.rs` were not touched.**
+
+**Result:** 94/94 passed (15 new tests + previous 79).
+
+**Files modified:**
+- `rust-kata/src/customer_type.rs`
+- `rust-kata/src/discount.rs`
+- `rust-kata/src/shipping.rs`
+
+---
+
+## Final Test Inventory (updated)
 
 | Suite | Location | Tests |
 |---|---|---|
-| `customer_type` unit tests | `src/customer_type.rs` | 4 |
-| `discount` unit tests | `src/discount.rs` | 17 |
-| `shipping` unit tests | `src/shipping.rs` | 17 |
+| `customer_type` unit tests | `src/customer_type.rs` | 5 |
+| `discount` unit tests | `src/discount.rs` | 26 |
+| `shipping` unit tests | `src/shipping.rs` | 19 |
 | `tax` unit tests | `src/tax.rs` | 10 |
-| Integration tests (legacy contract) | `tests/checkout.rs` | 31 |
-| **Total** | | **79** |
+| Integration tests (A–H legacy + P partner) | `tests/checkout.rs` | 39 |
+| **Total** | | **99** |

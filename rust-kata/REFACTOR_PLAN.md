@@ -593,7 +593,7 @@ fn safe(value: &str) -> String { value.trim().to_string() }
 
 ---
 
-## Phase 7 — New Customer Type: `partner`
+## Phase 7 — New Customer Type: `partner` ✅
 
 **Rules to implement:**
 - Base discount: 12 %.
